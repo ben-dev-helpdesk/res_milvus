@@ -1,26 +1,38 @@
-@echo on
-setlocal
+$serviceName = "Milvus.Helpdesk.Agente.ServiceCore"
+$logPath = "C:\ProgramData\Milvus\Scripts\milvus-service-restart.log"
 
-set "DIR=C:\ProgramData\Milvus\Scripts"
-set "SCRIPT=%DIR%\restart-milvus-service.ps1"
-set "RAW=https://raw.githubusercontent.com/ben-dev-helpdesk/res_milvus/main/restart-milvus-service.ps1"
-set "LOG=%DIR%\install.log"
+function Log($msg) {
+    $line = "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $msg
+    Add-Content -Path $logPath -Value $line -Encoding UTF8
+}
 
-mkdir "%DIR%" 2>nul
+$service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 
-echo ===== INICIO INSTALL %DATE% %TIME% =====>> "%LOG%"
+if ($null -eq $service) {
+    Log "Servico nao encontrado: $serviceName"
+    exit
+}
 
-echo Baixando script...>> "%LOG%"
-curl -L "%RAW%" -o "%SCRIPT%" >> "%LOG%" 2>&1
+Log "Status atual: $($service.Status)"
 
-echo Criando tarefa...>> "%LOG%"
-schtasks /Create /TN "\Milvus Agent Service Restart" /SC HOURLY /MO 1 /RL HIGHEST /RU SYSTEM /F ^
- /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ""%SCRIPT%""" >> "%LOG%" 2>&1
+try {
 
-echo Consultando tarefa...>> "%LOG%"
-schtasks /Query /TN "\Milvus Agent Service Restart" /FO LIST /V >> "%LOG%" 2>&1
+    if ($service.Status -eq "Running") {
 
-echo ===== FIM INSTALL %DATE% %TIME% =====>> "%LOG%"
+        Log "Servico em execucao. Reiniciando..."
+        Restart-Service -Name $serviceName -Force -ErrorAction Stop
+        Log "Servico reiniciado com sucesso"
 
-echo Instalacao finalizada. Log em: %LOG%
-pause
+    }
+    else {
+
+        Log "Servico parado. Iniciando..."
+        Start-Service -Name $serviceName -ErrorAction Stop
+        Log "Servico iniciado com sucesso"
+
+    }
+
+}
+catch {
+    Log "Erro ao manipular servico: $_"
+}
