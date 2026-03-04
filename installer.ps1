@@ -11,7 +11,7 @@ Invoke-WebRequest $RAW -OutFile $SCRIPT
 # criar tarefa
 schtasks /Create `
  /TN "\Milvus Agent Service Restart" `
- /SC MINUTE `
+ /SC HOURLY `
  /MO 1 `
  /RL HIGHEST `
  /RU SYSTEM `
